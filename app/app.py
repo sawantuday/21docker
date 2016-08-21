@@ -4,14 +4,19 @@
 import flask
 from flask import request, jsonify
 from container import run as docker_run
-from two1.wallet import Wallet
-from two1.bitserv.flask import Payment
+#from two1.wallet import Wallet
+#from two1.bitserv.flask import Payment
 import yaml
 import json
 import os
 
+# initializze wallet 
+# TWO1_WALLET_MNEMONIC = os.environ.get("TWO1_WALLET_MNEMONIC")
+# TWO1_USERNAME = os.environ.get("TWO1_USERNAME")
+# WALLET = Two1Wallet.import_from_mnemonic(mnemonic=TWO1_WALLET_MNEMONIC)
+
 app = flask.Flask(__name__)
-payment = Payment(app, Wallet())
+#payment = Payment(app, Wallet())
 
 app.config['DEBUG'] = os.getenv('DEBUG', False)
 
@@ -36,25 +41,68 @@ def handle_invalid_usage(error):
     response.status_code = error.status_code
     return response
 
-@app.route('/docker/run/', methods=['GET', 'POST'])
-@payment.required(5000)
-def run():
-    run_params = request.get_json(silent=False)
+@app.route('/docker/test/',methods=['GET'])
+def test():
+    return "hello world";
 
-    if 'image' in run_params:
-        # check for image format being name:tag or docker-py pull will download all tags !
-        if str(run_params['image']).endswith(":"):
-            raise InvalidUsage('You must specify an image name AND tag.', status_code=422)
-        if ":" not in run_params['image']:
-            raise InvalidUsage('You must specify an image name AND tag.', status_code=422)
-        try:
-            container = docker_run(run_params)
-            return jsonify(container)
-        except(Exception) as error:
-            # print(str(error))
-            raise InvalidUsage(str(error), status_code=500)
-    else:
-        raise InvalidUsage('You must specify at the very least an image name AND tag.', status_code=422)
+@app.route('/docker/run/', methods=['GET', 'POST'])
+#@payment.required(5000)
+def run():
+    image = request.args.get('image')
+    tag = request.args.get('tag', 'latest')
+    memory = request.args.get('mem', '256')
+    ports = request.args.getlist('port')
+    
+    if image == None:
+        raise InvalidUsage('You must specify an image name', status_code=422)
+
+    try:
+        image = image + ":" + tag
+        params = {"ports":ports, "image":image, "mem":memory}
+        container = docker_run(params)
+        return jsonify(container)
+    except(Exception) as error:
+        print(str(error))
+        raise InvalidUsage(str(error), status_code=500)
+
+@app.route('/docker/stop', methods=['GET', 'POST'])
+# @payment.required(5)
+def stop():
+    containerID=request.args.get('container_id')
+    docker_stop(containerID)
+    return 'Done'
+@app.route('/docker/renew', methods=['GET', 'POST'])
+# @payment.required(5000)
+def renew():
+    return 'Feature not implemented'
+@app.route('/docker/log', methods=['GET', 'POST'])
+# @payment.required(5)
+def log():
+    return 'Feature not implemented'
+@app.route('/docker/check', methods=['GET', 'POST'])
+# @payment.required(5)
+def check():
+    return 'Feature not implemented'
+
+#@app.route('/docker/run2/', methods=['GET', 'POST'])
+#@payment.required(5000)
+#def run2():
+#    run_params = request.get_json(silent=False)
+#
+#    if 'image' in run_params:
+#        # check for image format being name:tag or docker-py pull will download all tags !
+#        if str(run_params['image']).endswith(":"):
+#            raise InvalidUsage('You must specify an image name AND tag.', status_code=422)
+#        if ":" not in run_params['image']:
+#            raise InvalidUsage('You must specify an image name AND tag.', status_code=422)
+#        try:
+#            container = docker_run(run_params)
+#            return jsonify(container)
+#        except(Exception) as error:
+#            # print(str(error))
+#            raise InvalidUsage(str(error), status_code=500)
+#    else:
+#        raise InvalidUsage('You must specify at the very least an image name AND tag.', status_code=422)
 
 @app.route('/manifest')
 def manifest():
@@ -65,4 +113,4 @@ def manifest():
     return json.dumps(manifest)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000)
+    app.run(host="0.0.0.0", port=8080)
