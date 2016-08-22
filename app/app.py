@@ -4,6 +4,7 @@
 import flask
 from flask import request, jsonify
 from container import run as docker_run
+from container import renew as docker_renew
 #from two1.wallet import Wallet
 #from two1.bitserv.flask import Payment
 import yaml
@@ -69,12 +70,22 @@ def run():
 # @payment.required(5)
 def stop():
     containerID=request.args.get('container_id')
+    print("Stopping container: "+containerID)
     docker_stop(containerID)
     return 'Done'
+
 @app.route('/docker/renew', methods=['GET', 'POST'])
 # @payment.required(5000)
 def renew():
+    containerID=request.args.get('container_id')
+    print("Extending time for container: "+containerID)
+    res = docker_renew(containerID)
+    if res:
+        return {'success':True}
+    else:
+        return {'success':False}
     return 'Feature not implemented'
+
 @app.route('/docker/log', methods=['GET', 'POST'])
 # @payment.required(5)
 def log():

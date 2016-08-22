@@ -7,8 +7,8 @@ import json, time, os, sys
 import netifaces as ni
 import redis
 
-# default container lifetime = 360 seconds !
-DEFAULT_EXPIRATION = os.getenv('DEFAULT_EXPIRATION', 360)
+# default container lifetime = 600 seconds !
+DEFAULT_EXPIRATION = os.getenv('DEFAULT_EXPIRATION', 600)
 # If a redis server is defined in environment then we use it, otherwise assumed local
 REDIS = os.getenv('REDIS', "localhost:6379")
 
@@ -86,6 +86,18 @@ def run(run_params):
 def ps():
     c = cli.containers()
     return c
+
+def renew(containerID):
+    # workaround to get away with terminated container 
+    # extend only if 30 seconds are remaining for container 
+    
+    # check if container is still running 
+    containers = ps()
+    if containerID in containers:   
+        db.incrby(containerID, DEFAULT_EXPIRATION)
+        return True
+    else: # return false. Said container not found in running list
+        return False
 
 def stop(id):
     cli.stop(id)
